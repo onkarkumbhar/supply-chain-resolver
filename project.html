@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Supply Chain Resolver</title>
+    <style type="text/css">
+        html, body, #container {
+          width: 100%;
+          height: 100%;
+          margin: 0;
+          padding: 0;
+        }
+      </style>
+      <!--
+        Review material:- 
+        https://docs.anychart.com/Basic_Charts/Network_Graph
+       -->
+</head>
+<body>
+    <div class="taking_input" id="taking_input">
+        <div class="taking_city_input">
+            <p>Please enter number of supply chain vendors with comma's (Ex. v1,v2,v3,v4)</p>
+            <textarea id="cities_inputed"></textarea>
+            <br>
+            <button onclick="preparecities();">Update Cities</button>
+        </div>
+    </div>
+    <div class="showing_output" id="showing_output">
+        <div id="container" style="height: 500px;width:100%">
+                                    
+        </div>
+        <div id="bridge_output">
+
+        </div>
+        <div id="articulation_output">
+
+        </div>
+        <div id="allsource_output">
+
+        </div>
+        <div id="suggestions">
+        </div>
+    </div>
+    <script src="bridge.js"></script>
+    <script src="articulation.js"></script>
+    <script src="allsource.js"></script>
+    <script src="https://cdn.anychart.com/releases/8.8.0/js/anychart-core.min.js"></script>
+    <script src="https://cdn.anychart.com/releases/8.8.0/js/anychart-graph.min.js"></script>
+    <script src="https://cdn.anychart.com/releases/8.8.0/js/anychart-data-adapter.min.js"></script>
+    <script>
+        // Global Declaration
+        let cities = [];
+        let count = 0;
+
+        //Supporting Functions
+        function preparecities()
+        {
+            let cities_inputed = document.getElementById('cities_inputed').value;
+            this.cities = cities_inputed.split(',');
+            let updatedhtml=`<div class="input_fields">
+                                <p>Please add enteries before entering values</p>
+                                <p>FROM  <=>  TO</p>
+                                <div class="taking_city_input" id="taking_city_input">
+                                </div>
+                                <br>
+                                <button onclick="addnew();">Add New entry</button>
+                                <button onclick="removeentry();">Remove Created entry</button><hr><hr>
+                                <button onclick="solver();">Resolve Supply Chain Map</button>
+                            </div>`;
+            let taking_input = document.getElementById('taking_input');
+            taking_input.innerHTML = updatedhtml;
+        }
+
+        function revisehtml(count,updatedhtml)
+        {
+            let outputHTML = "";
+            for(let i=0;i<count;i++)
+            {
+                let temp_1 = document.getElementById("selectNumber"+i).value,temp_2=document.getElementById("selectNumber"+(i+1)).value;
+                let temp_3 = document.getElementById("weightNumber"+i).value;
+                outputHTML += `
+                    <select id="selectNumber`+i+`">
+                        <option value="`+temp_1+`">`+temp_1+`</option>
+                    </select> <=> 
+                    <select id="selectNumber`+(i+1)+`">
+                        <option value="`+temp_2+`">`+temp_2+`</option>
+                    </select>
+                    Cost :- <input type="number" id="weightNumber`+i+`" value=`+temp_3+`><br>
+                `;
+                i++;
+            }
+            outputHTML += updatedhtml;
+            return outputHTML;
+        }
+        function addnew()
+        {
+            let updatedhtml = `
+                    <select id="selectNumber`+count+`">
+                        <option>Choose Vendor</option>
+                    </select> <=> 
+                    <select id="selectNumber`+(count+1)+`">
+                        <option>Choose Vendor</option>
+                    </select>
+                    Cost :- <input type="number" id="weightNumber`+count+`"><br>`;
+            let taking_city_input = document.getElementById('taking_city_input');  
+            updatedhtml = revisehtml(count,updatedhtml);     
+            taking_city_input.innerHTML = updatedhtml; 
+
+
+            let select1 = document.getElementById("selectNumber"+count);
+            let select2 = document.getElementById("selectNumber"+(count+1));
+            let weight1 = document.getElementById("weightNumber"+count);
+
+            count = count + 2;
+            for(let i = 0; i < this.cities.length; i++) {
+                let opt = this.cities[i];
+                let el1 = document.createElement("option");
+                let el2 = document.createElement("option");
+                el1.textContent = opt;
+                el1.value = opt;
+                el2.textContent = opt;
+                el2.value = opt;
+                select1.appendChild(el1);
+                select2.appendChild(el2);
+            }
+        }
+
+        function removeentry()
+        {
+            let outputHTML = "";
+            for(let i=0;i<count-2;i++)
+            {
+                let temp_1 = document.getElementById("selectNumber"+i).value,temp_2=document.getElementById("selectNumber"+(i+1)).value;
+                let temp_3 = document.getElementById("weightNumber"+i).value;
+                outputHTML += `
+                    <select id="selectNumber`+i+`">
+                        <option value="`+temp_1+`">`+temp_1+`</option>
+                    </select> <=> 
+                    <select id="selectNumber`+(i+1)+`">
+                        <option value="`+temp_2+`">`+temp_2+`</option>
+                    </select>
+                    Cost :- <input type="number" id="weightNumber`+i+`" value=`+temp_3+`><br>
+                `;
+                i++;
+            }
+            let taking_city_input = document.getElementById('taking_city_input');       
+            taking_city_input.innerHTML = outputHTML; 
+            count -= 2;
+        }
+
+        function solver()
+        {
+            //Creating Graph 
+            let graph = [];
+            let INF = 99999;
+            let allsourceGraph = [];
+            for(let i=0;i<this.cities.length;i++)
+            {
+                let temp = [];
+                for(let j=0;j<this.cities.length;j++)
+                {
+                    if(i==j)
+                        temp.push(0);
+                    else
+                        temp.push(INF);
+                }
+                allsourceGraph.push(temp);
+            }
+            for(let i =0;i<count;i++)
+            {
+                let select1 = document.getElementById("selectNumber"+i);  
+                let select2 = document.getElementById("selectNumber"+(i+1)); 
+                let weight1 = document.getElementById("weightNumber"+i);
+                // graph.push([this.cities[select1.selectedIndex -1], this.cities[select2.selectedIndex-1]]);
+                graph.push([select1.value,select2.value]);
+                let v1,v2;
+                for(let j=0;j<this.cities.length;j++)
+                {
+                    if(select1.value == this.cities[j])
+                        v1 = j;
+                    if(select2.value == this.cities[j])
+                        v2 = j;
+                }
+                allsourceGraph[v1][v2] = parseInt(weight1.value);
+                allsourceGraph[v2][v1] = parseInt(weight1.value);
+                i++;
+            }
+            // Refactoring graph into dfs format
+            let definedgraph = {};  
+            for(let i=0;i<this.cities.length;i++)
+                definedgraph[this.cities[i]] = new Array();
+            for(let i=0;i<graph.length;i++)
+                definedgraph[graph[i][0]].push(graph[i][1]);
+
+
+            // Drawing graph
+            var data = {
+                nodes:[
+
+                ],
+                edges:[
+                    
+                ]
+            };
+            for(let i=0;i<this.cities.length;i++)
+            {
+                data["nodes"].push({id:this.cities[i]});
+                for(let j=0;j<definedgraph[this.cities[i]].length;j++)
+                {
+                    data["edges"].push({from:this.cities[i],to:definedgraph[this.cities[i]][j]});
+                }
+            }
+            // console.log(data);
+            var chart = anychart.graph(data);
+
+            chart.nodes().labels().enabled(true);
+            chart.nodes().labels().format("{%id}");
+            chart.nodes().labels().fontSize(12);
+            chart.nodes().labels().fontWeight(600);
+
+            chart.title("Network Visualization");
+            chart.container("container").draw();
+
+
+
+            // Calling functions 
+            //bridge finder
+            let g1 = new Graph(this.cities);
+            let g2 = new Graph2(this.cities);
+            for(let i=0;i<this.cities.length;i++)
+            {
+                for(let j=0;j<definedgraph[this.cities[i]].length;j++){
+                    // console.log("creating graph "+this.cities[i]+" "+definedgraph[this.cities[i]][j]+" ");
+                    g1.addEdge(this.cities[i],definedgraph[this.cities[i]][j]);
+                    g2.addEdge(this.cities[i],definedgraph[this.cities[i]][j]);
+                }
+            }
+            g1.bridge();
+            g2.AP();
+            let a = new AllPairShortestPath(this.cities.length);
+            let output_allsource = a.floydWarshall(allsourceGraph);
+            //output
+            let bridge_output = document.getElementById("bridge_output");
+            let articulation_output = document.getElementById("articulation_output");
+            if(bridge_output.innerHTML == "")
+                bridge_output.innerHTML = "<h3 style='color:green;'>No bridges found !!!</h3>";
+            else
+                bridge_output.innerHTML = "<h3 style='color:red;'>Bridges found !!!</h3><br>"+ bridge_output.innerHTML;
+            
+            if(articulation_output.innerHTML == "")
+                articulation_output.innerHTML = "<h3 style='color:green;'>No Articulation nodes found!!!</h3>";
+            else
+                articulation_output.innerHTML = "<h3 style='color:red;'>Articulation nodes found !!!</h3><br>"+ articulation_output.innerHTML;
+
+            let allsource_output = document.getElementById("allsource_output");
+            let sampleoutput = "";
+            for(let i=0;i<this.cities.length;i++)
+            {
+                for(let j=0;j<this.cities.length;j++)
+                {
+                    if(output_allsource[i][j] == INF)
+                        sampleoutput += "- ";
+                    else
+                        sampleoutput += output_allsource[i][j]+ " ";
+                }
+                sampleoutput += "<br>";
+            }
+            allsource_output.innerHTML = "<h3 style='color:green;'>Shortest path form all nodes to each node !!!</h3><br>" + sampleoutput;
+            
+        }       
+    </script>
+</body>
+</html>
